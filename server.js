@@ -37,28 +37,36 @@ let mongoClient = null;
 let mongoDb = null;
 let useMongo = false;
 
-// Initialize Database (MongoDB with JSON fallback)
+// Initialize Database
 async function initDb() {
   await loadEnv();
   if (process.env.MONGO_URI) {
     mongoUrl = process.env.MONGO_URI;
   }
 
-  // 1. Try connecting to MongoDB
+  const isForceMongo = process.env.FORCE_MONGO === "true";
+  const maskedUrl = mongoUrl.replace(/:([^@]+)@/, ":******@");
+  console.log(`Attempting to connect to MongoDB at: ${maskedUrl}...`);
+
   try {
-    // Hide credentials in console logs for security
-    const maskedUrl = mongoUrl.replace(/:([^@]+)@/, ":******@");
-    console.log(`Attempting to connect to MongoDB at: ${maskedUrl}...`);
-    mongoClient = new MongoClient(mongoUrl, { serverSelectionTimeoutMS: 3000 });
+    mongoClient = new MongoClient(mongoUrl, { serverSelectionTimeoutMS: 2000 });
     await mongoClient.connect();
     mongoDb = mongoClient.db();
     useMongo = true;
-    console.log("✓ Successfully connected to MongoDB!");
+    console.log("✓ Connected to MongoDB successfully!");
   } catch (err) {
-    console.warn("⚠️ MongoDB connection failed. Falling back to local db.json storage.");
+    console.warn("⚠️ MongoDB connection failed.");
+    console.warn("Error details:", err.message);
+
+    if (isForceMongo) {
+      console.error("✗ FORCE_MONGO is enabled. Stopping server.");
+      process.exit(1);
+    }
+
+    console.log("➔ Falling back to local db.json storage.");
     useMongo = false;
 
-    // 2. Setup JSON file fallback
+    // Setup local JSON fallback
     try {
       await fs.mkdir(dbDir, { recursive: true });
       try {
@@ -76,24 +84,21 @@ async function initDb() {
   }
 }
 
-// JSON Fallback helper: Read database
+// JSON Fallback: Read
 async function readJsonDb() {
   try {
     const raw = await fs.readFile(dbPath, "utf8");
     return JSON.parse(raw);
   } catch (err) {
-    console.error("JSON DB Read Error, fallback:", err);
     return { clients: [], receipts: [], settings: {} };
   }
 }
 
-// JSON Fallback helper: Write database
+// JSON Fallback: Write
 async function writeJsonDb(data) {
   try {
     await fs.writeFile(dbPath, JSON.stringify(data, null, 2), "utf8");
-  } catch (err) {
-    console.error("JSON DB Write Error:", err);
-  }
+  } catch {}
 }
 
 // Clients Endpoints
@@ -115,7 +120,6 @@ app.post("/api/clients", async (req, res) => {
   const newClient = req.body;
   if (useMongo) {
     try {
-      // Upsert by 'id' field
       await mongoDb.collection("clients").replaceOne(
         { id: newClient.id },
         newClient,
@@ -232,7 +236,6 @@ app.post("/api/settings", async (req, res) => {
   const newSettings = req.body;
   if (useMongo) {
     try {
-      // Clean previous settings object, save single document
       await mongoDb.collection("settings").deleteMany({});
       await mongoDb.collection("settings").insertOne(newSettings);
       res.json({ success: true, settings: newSettings });
