@@ -156,6 +156,9 @@ function TrussPattern({ id }) {
 /* ---------- main app ---------- */
 export default function KolkodeInvoiceApp() {
   const [ready, setReady] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return sessionStorage.getItem("kolkode_auth_token") === "kolkode-session-authorized";
+  });
   const [clients, setClients] = useState([]);
   const [receipts, setReceipts] = useState([]);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -293,6 +296,15 @@ export default function KolkodeInvoiceApp() {
     );
   }
 
+  if (!isAuthenticated) {
+    return (
+      <>
+        <GlobalStyle />
+        <LoginView onLoginSuccess={() => setIsAuthenticated(true)} />
+      </>
+    );
+  }
+
   return (
     <div className="app-container" style={S.app}>
       <GlobalStyle />
@@ -302,7 +314,10 @@ export default function KolkodeInvoiceApp() {
         setEditingReceiptId(null);
         setViewingReceiptId(null);
         setEditingClientId(null);
-      }} receipts={receipts} />
+      }} receipts={receipts} onLogout={() => {
+        sessionStorage.removeItem("kolkode_auth_token");
+        setIsAuthenticated(false);
+      }} />
       <main style={S.main} className="no-print">
         {view === "dashboard" && (
           <Dashboard
@@ -684,7 +699,7 @@ function GlobalStyle() {
 }
 
 /* ---------- sidebar ---------- */
-function Sidebar({ view, setView, receipts }) {
+function Sidebar({ view, setView, receipts, onLogout }) {
   const NavItem = ({ id, label }) => (
     <div
       onClick={() => setView(id)}
@@ -720,9 +735,25 @@ function Sidebar({ view, setView, receipts }) {
       <NavItem id="clients" label="Clients" />
       <NavItem id="reports" label="Reports" />
       <NavItem id="settings" label="Settings" />
-      <div style={{ marginTop: "auto", paddingTop: 20 }}>
+      <div style={{ marginTop: "auto", paddingTop: 20, display: "flex", flexDirection: "column", gap: 10 }}>
         <button className="btn" style={{ width: "100%" }} onClick={() => setView("receipt-edit")}>
           + New Receipt
+        </button>
+        <button
+          className="btn-ghost"
+          style={{
+            width: "100%",
+            height: 38,
+            borderColor: C.border,
+            color: C.muted,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 12.5,
+          }}
+          onClick={onLogout}
+        >
+          Logout
         </button>
       </div>
     </aside>
@@ -2305,6 +2336,169 @@ function ReportsView({ receipts, clients }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------- Login View ---------- */
+function LoginView({ onLoginSuccess }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!username.trim() || !password.trim()) {
+      setError("Please fill in all fields.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        sessionStorage.setItem("kolkode_auth_token", data.token);
+        onLoginSuccess();
+      } else {
+        setError(data.error || "Invalid username or password.");
+      }
+    } catch (err) {
+      console.error("Login request failed:", err);
+      // local fallback for network errors or offline mode
+      if (username === "admin" && password === "kolkodeadmin") {
+        sessionStorage.setItem("kolkode_auth_token", "kolkode-session-authorized");
+        onLoginSuccess();
+      } else {
+        setError("Network error or invalid credentials.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        background: "#080604",
+        color: C.text,
+        fontFamily: F.body,
+        padding: 20,
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Background Watermark */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.04, color: C.orange, pointerEvents: "none" }}>
+        <div style={{ width: "100%", height: "100%", background: "url(#truss)" }} />
+      </div>
+
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 400,
+          background: C.surface,
+          border: `1px solid ${C.border}`,
+          borderRadius: 16,
+          padding: "40px 32px",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ fontFamily: F.display, fontWeight: 700, fontSize: 26, letterSpacing: 0.5, color: C.text }}>
+            KOL<span style={{ color: C.orange }}>KODE</span>
+          </div>
+          <div style={{ fontFamily: F.mono, fontSize: 10, color: C.muted, letterSpacing: 2, marginTop: 4 }}>
+            RECEIPT_SYSTEM_ADMIN
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          {error && (
+            <div
+              style={{
+                background: C.orangeDim,
+                color: C.orange,
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: "10px 14px",
+                fontSize: 12.5,
+                textAlign: "center",
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          <div>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 6, fontFamily: F.mono, letterSpacing: 0.3 }}>USERNAME</div>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Enter your username"
+              style={{
+                width: "100%",
+                background: C.surfaceAlt,
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: "10px 14px",
+                color: C.text,
+                fontSize: 13.5,
+                outline: "none",
+              }}
+            />
+          </div>
+
+          <div>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 6, fontFamily: F.mono, letterSpacing: 0.3 }}>PASSWORD</div>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              style={{
+                width: "100%",
+                background: C.surfaceAlt,
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: "10px 14px",
+                color: C.text,
+                fontSize: 13.5,
+                outline: "none",
+              }}
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="btn"
+            disabled={loading}
+            style={{
+              width: "100%",
+              height: 42,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 700,
+              marginTop: 10,
+            }}
+          >
+            {loading ? "Authenticating..." : "Login to System"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

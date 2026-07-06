@@ -258,6 +258,19 @@ app.post("/api/settings", async (req, res) => {
   }
 });
 
+// Admin Login Endpoint
+app.post("/api/login", (req, res) => {
+  const { username, password } = req.body;
+  const adminUser = process.env.ADMIN_USERNAME || "admin";
+  const adminPass = process.env.ADMIN_PASSWORD || "kolkodeadmin";
+
+  if (username === adminUser && password === adminPass) {
+    res.json({ success: true, token: "kolkode-session-authorized" });
+  } else {
+    res.status(401).json({ success: false, error: "Invalid username or password" });
+  }
+});
+
 // Start Server
 initDb().then(() => {
   app.listen(port, () => {
