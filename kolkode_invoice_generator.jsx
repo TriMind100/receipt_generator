@@ -176,10 +176,17 @@ export default function KolkodeInvoiceApp() {
     (async () => {
       try {
         const [resClients, resReceipts, resSettings] = await Promise.all([
-          fetch("/api/clients").then((res) => res.json()),
-          fetch("/api/receipts").then((res) => res.json()),
-          fetch("/api/settings").then((res) => res.json()),
+          fetch("/api/clients")
+            .then((res) => (res.ok ? res.json() : []))
+            .catch(() => []),
+          fetch("/api/receipts")
+            .then((res) => (res.ok ? res.json() : []))
+            .catch(() => []),
+          fetch("/api/settings")
+            .then((res) => (res.ok ? res.json() : {}))
+            .catch(() => ({})),
         ]);
+
         setClients(resClients || []);
         setReceipts(resReceipts || []);
         if (resSettings && Object.keys(resSettings).length > 0) {

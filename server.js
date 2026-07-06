@@ -228,7 +228,7 @@ app.get("/api/settings", async (req, res) => {
     }
   } else {
     const db = await readJsonDb();
-    res.json(db.settings);
+    res.json(db.settings || {});
   }
 });
 
