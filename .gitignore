@@ -1,0 +1,18 @@
+# Dependency folders
+node_modules/
+
+# Local databases & secrets
+.env
+data/
+
+# Build outputs
+dist/
+build/
+
+# IDE files and OS caches
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.agents/
+.gemini/
