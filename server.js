@@ -109,6 +109,16 @@ async function writeJsonDb(data) {
   } catch {}
 }
 
+// Test Diagnostic Endpoint
+app.get("/api/test", (req, res) => {
+  res.json({
+    status: "healthy",
+    message: "Kolkode Receipt System API is fully operational",
+    database: useMongo ? "MongoDB Atlas (Connected)" : "Local db.json (Fallback Active)",
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Clients Endpoints
 app.get("/api/clients", async (req, res) => {
   if (useMongo) {
