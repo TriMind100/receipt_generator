@@ -32,7 +32,7 @@ async function loadEnv() {
 }
 
 // MongoDB Config
-let mongoUrl = "mongodb://127.0.0.1:27017/kolkode-receipts";
+let mongoUrl = "mongodb://127.0.0.1:27017/recipts";
 let mongoClient = null;
 let mongoDb = null;
 let useMongo = false;
@@ -51,7 +51,7 @@ async function initDb() {
   try {
     mongoClient = new MongoClient(mongoUrl, { serverSelectionTimeoutMS: 2000 });
     await mongoClient.connect();
-    mongoDb = mongoClient.db();
+    mongoDb = mongoClient.db("recipts");
     useMongo = true;
     console.log("✓ Connected to MongoDB successfully!");
   } catch (err) {
