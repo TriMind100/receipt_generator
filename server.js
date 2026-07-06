@@ -3,6 +3,14 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import { MongoClient } from "mongodb";
+import dns from "dns";
+
+// Override DNS resolution to Google & Cloudflare DNS to bypass local Windows/ISP SRV lookup blocks
+try {
+  dns.setServers(["8.8.8.8", "1.1.1.1"]);
+} catch (err) {
+  console.warn("Could not set custom DNS servers:", err.message);
+}
 
 const app = express();
 const port = 3001;
