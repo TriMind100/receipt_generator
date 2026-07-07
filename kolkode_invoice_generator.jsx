@@ -763,22 +763,16 @@ function Sidebar({ view, setView, receipts, onLogout }) {
 /* ---------- Dashboard ---------- */
 function Dashboard({ clients, receipts, onOpenReceipt, onNewReceipt }) {
   const stats = useMemo(() => {
+    let totalAmount = 0;
     let totalReceived = 0;
-    const now = new Date();
-    let thisMonth = 0;
+    let totalPending = 0;
     receipts.forEach((rcpt) => {
-      const { total } = computeTotals(rcpt);
-      totalReceived += total;
-      if (rcpt.receiptDate) {
-        const parts = rcpt.receiptDate.split("-");
-        if (parts.length === 3) {
-          const y = parseInt(parts[0], 10);
-          const m = parseInt(parts[1], 10) - 1;
-          if (m === now.getMonth() && y === now.getFullYear()) thisMonth += total;
-        }
-      }
+      const { total, totalPaid, balance } = computeTotals(rcpt);
+      totalAmount += total;
+      totalReceived += totalPaid;
+      totalPending += balance;
     });
-    return { totalReceived, count: receipts.length, thisMonth };
+    return { totalAmount, totalReceived, totalPending };
   }, [receipts]);
 
   const recent = [...receipts].sort((a, b) => (b.receiptDate > a.receiptDate ? 1 : -1)).slice(0, 6);
@@ -787,9 +781,9 @@ function Dashboard({ clients, receipts, onOpenReceipt, onNewReceipt }) {
     <div>
       <Header title="Dashboard" subtitle="Overview of KOLKODE's receipt logs" action={{ label: "+ New Receipt", onClick: onNewReceipt }} />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 28 }} className="dashboard-grid">
+        <StatCard label="Total Amount" value={inr(stats.totalAmount)} accent={C.orange} />
         <StatCard label="Total Received" value={inr(stats.totalReceived)} accent={C.green} />
-        <StatCard label="This Month" value={inr(stats.thisMonth)} accent={C.orange} />
-        <StatCard label="Receipts Issued" value={stats.count} accent={C.text} />
+        <StatCard label="Total Pending" value={inr(stats.totalPending)} accent={C.red} />
       </div>
       <div style={{ fontFamily: F.mono, fontSize: 11, color: C.muted, letterSpacing: 1, marginBottom: 10 }}>
         RECENT RECEIPTS
