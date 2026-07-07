@@ -17,6 +17,12 @@ const port = 3001;
 
 app.use(express.json());
 
+// Database connection middleware for Serverless compatibility
+app.use(async (req, res, next) => {
+  await ensureDb();
+  next();
+});
+
 // Setup storage paths for JSON fallback
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,6 +51,7 @@ let mongoClient = null;
 let mongoDb = null;
 let useMongo = false;
 let lastMongoError = null;
+let dbPromise = null;
 
 // Initialize Database
 async function initDb() {
@@ -92,6 +99,13 @@ async function initDb() {
       console.error("Local DB Init Error:", fsErr);
     }
   }
+}
+
+function ensureDb() {
+  if (!dbPromise) {
+    dbPromise = initDb();
+  }
+  return dbPromise;
 }
 
 // JSON Fallback: Read
@@ -290,12 +304,12 @@ app.post("/api/login", (req, res) => {
 });
 
 // Start Server
-initDb().then(() => {
-  if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== "production") {
+  ensureDb().then(() => {
     app.listen(port, () => {
       console.log(`Backend server listening at http://localhost:${port}`);
     });
-  }
-});
+  });
+}
 
 export default app;
