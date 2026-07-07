@@ -283,7 +283,11 @@ app.post("/api/login", (req, res) => {
 
 // Start Server
 initDb().then(() => {
-  app.listen(port, () => {
-    console.log(`Backend server listening at http://localhost:${port}`);
-  });
+  if (process.env.NODE_ENV !== "production") {
+    app.listen(port, () => {
+      console.log(`Backend server listening at http://localhost:${port}`);
+    });
+  }
 });
+
+export default app;
