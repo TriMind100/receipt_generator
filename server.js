@@ -44,6 +44,7 @@ let mongoUrl = "mongodb://127.0.0.1:27017/recipts";
 let mongoClient = null;
 let mongoDb = null;
 let useMongo = false;
+let lastMongoError = null;
 
 // Initialize Database
 async function initDb() {
@@ -65,6 +66,7 @@ async function initDb() {
   } catch (err) {
     console.warn("⚠️ MongoDB connection failed.");
     console.warn("Error details:", err.message);
+    lastMongoError = err.message;
 
     if (isForceMongo) {
       console.error("✗ FORCE_MONGO is enabled. Stopping server.");
@@ -115,6 +117,12 @@ app.get("/api/test", (req, res) => {
     status: "healthy",
     message: "Kolkode Receipt System API is fully operational",
     database: useMongo ? "MongoDB Atlas (Connected)" : "Local db.json (Fallback Active)",
+    diagnostics: {
+      hasMongoUri: !!process.env.MONGO_URI,
+      hasForceMongo: process.env.FORCE_MONGO || "not set",
+      mongoUriLength: process.env.MONGO_URI ? process.env.MONGO_URI.length : 0,
+      lastError: lastMongoError
+    },
     timestamp: new Date().toISOString()
   });
 });
